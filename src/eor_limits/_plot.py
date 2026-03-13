@@ -81,6 +81,7 @@ def plot_vs_k(
     fontsize: int = 15,
     fig_ratio: float | None = None,
     # Output options
+    dark_mode: bool = False,
     fig: Annotated[plt.Figure | None, Parameter(show=False)] = None,
     ax: Annotated[plt.Axes | None, Parameter(show=False)] = None,
     out: str | Path | None = None,
@@ -179,6 +180,8 @@ def plot_vs_k(
     fig : matplotlib.figure.Figure | None
         If specified, the figure to plot on. If not specified, a new figure
         will be created.
+    dark_mode : bool (default: ``False``)
+        Use dark background with light text and adjusted colors.
     ax : matplotlib.axes.Axes| None
         If specified, the axis to plot on. If not specified, a new axis
         will be created.
@@ -192,6 +195,9 @@ def plot_vs_k(
     """
     ###################################################################################
     # Set up the figure and axis
+    if dark_mode:
+        plt.style.use("dark_background")
+
     fig_width = 25
     if theories is not None:
         fig_height = fig_width * (fig_ratio or 1)
@@ -270,6 +276,13 @@ def plot_vs_k(
         for limit in limits
     ]
 
+    # In dark mode, adjust default shade colors and set outline color
+    outline_color = None if dark_mode else "black"
+    if dark_mode:
+        for style in limit_styles.values():
+            if style.get("shade_color") == "grey":
+                style["shade_color"] = "#444444"
+
     # Plotting the limits as points or lines, depending on the number of k values
     # or user specifications.
     limit_lines = plot_limits(
@@ -280,6 +293,7 @@ def plot_vs_k(
         shade_limits,
         delta_squared_range,
         scalar_map,
+        outline_color=outline_color,
     )
 
     ###################################################################################
@@ -603,6 +617,7 @@ def plot_limits(
     shade_limits: bool,
     delta_squared_range: tuple[float, float],
     scalar_map: cmx.ScalarMappable,
+    outline_color: str = "black",
 ):
     """Plot limit papers on the given axes."""
     lines = []
@@ -715,14 +730,14 @@ def plot_limits(
 
                 color_val = scalar_map.to_rgba(redshift)
 
-                # make black outline by plotting thicker black line first
-                ax.plot(
-                    k_edges,
-                    delta_edges,
-                    color="black",
-                    linewidth=limit_style["linewidth"] + 2,
-                    zorder=1,
-                )
+                if outline_color is not None:
+                    ax.plot(
+                        k_edges,
+                        delta_edges,
+                        color=outline_color,
+                        linewidth=limit_style["linewidth"] + 2,
+                        zorder=1,
+                    )
 
                 (this_line,) = ax.plot(
                     k_edges,
