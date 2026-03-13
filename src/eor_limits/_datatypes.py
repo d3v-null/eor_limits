@@ -517,7 +517,7 @@ class DataSet:
         """
 
         def mask(dsq):
-            return (dsq >= delta_squared_min) & (dsq <= delta_squared_max)
+            return np.isnan(dsq) | ((dsq >= delta_squared_min) & (dsq <= delta_squared_max))
 
         try:
             return self._select_with_k_based_mask(mask, "delta_squared")

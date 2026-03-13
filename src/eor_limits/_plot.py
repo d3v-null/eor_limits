@@ -209,10 +209,10 @@ def plot_vs_k(
     # Load data for limits and sort by year.
     if limits is None:
         limits = list(KNOWN_LIMITS.keys())
-        limits = [load_limit_data(limit).drop_nan() for limit in limits]
+        limits = [load_limit_data(limit) for limit in limits]
         limits.sort(key=lambda limit: limit.year)
     else:
-        limits = [load_limit_data(limit).drop_nan() for limit in limits]
+        limits = [load_limit_data(limit) for limit in limits]
 
     # Select the specified k and z ranges from the limits
     def _get_z_range_from_limits(limits):
@@ -667,32 +667,51 @@ def plot_limits(
         # since the k and delta_squared values are given as lists of arrays for each z.
         else:
             for ind, redshift in enumerate(limit.data.z):
-                k_vals = limit.data.k[ind]
+                k_vals = np.asarray(limit.data.k[ind])
                 delta_squared = limit.data.delta_squared[ind]
-                k_lower = (
-                    limit.data.k_lower[ind]
-                    if limit.data.k_lower is not None
-                    else [0] * len(k_vals)
-                )
-                k_upper = (
-                    limit.data.k_upper[ind]
-                    if limit.data.k_upper is not None
-                    else [np.inf] * len(k_vals)
-                )
+
+                # If k_lower/k_upper not provided, compute from midpoints between k values
+                if limit.data.k_lower is not None:
+                    k_lower = np.asarray(limit.data.k_lower[ind])
+                else:
+                    # Use midpoints between adjacent k values as bin edges
+                    # For first bin, mirror the spacing from the right edge
+                    k_mids = (k_vals[:-1] + k_vals[1:]) / 2
+                    first_lower = k_vals[0] - (k_mids[0] - k_vals[0])
+                    k_lower = np.concatenate(([first_lower], k_mids))
+
+                if limit.data.k_upper is not None:
+                    k_upper = np.asarray(limit.data.k_upper[ind])
+                else:
+                    # Use midpoints between adjacent k values as bin edges
+                    # For last bin, mirror the spacing from the left edge
+                    k_mids = (k_vals[:-1] + k_vals[1:]) / 2
+                    last_upper = k_vals[-1] + (k_vals[-1] - k_mids[-1])
+                    k_upper = np.concatenate((k_mids, [last_upper]))
 
                 # Some lines have overlapping edges (since window functions can overlap)
                 # That looks ugly, so we make sure we meet towards the right.
                 max_right_edges = np.concatenate((k_vals[1:], [np.inf]))
-                min_left_edges = np.concatenate(([0], max_right_edges[:-1]))
+                min_left_edges = np.concatenate(([-np.inf], k_vals[:-1]))
 
-                k_edges = np.stack((
-                    np.maximum(np.asarray(k_lower), min_left_edges),
-                    np.minimum(np.asarray(k_upper), max_right_edges),
-                )).T.flatten()
-                delta_edges = np.stack((
-                    np.asarray(delta_squared),
-                    np.asarray(delta_squared),
-                )).T.flatten()
+                # Build edges with gaps for NaN delta values
+                k_edges_list = []
+                delta_edges_list = []
+                delta_arr = np.asarray(delta_squared)
+                k_lower_arr = np.maximum(k_lower, min_left_edges)
+                k_upper_arr = np.minimum(k_upper, max_right_edges)
+
+                for i, dsq in enumerate(delta_arr):
+                    if np.isnan(dsq):
+                        # Insert NaN gap to break the line
+                        k_edges_list.extend([np.nan, np.nan])
+                        delta_edges_list.extend([np.nan, np.nan])
+                    else:
+                        k_edges_list.extend([k_lower_arr[i], k_upper_arr[i]])
+                        delta_edges_list.extend([dsq, dsq])
+
+                k_edges = np.array(k_edges_list)
+                delta_edges = np.array(delta_edges_list)
 
                 color_val = scalar_map.to_rgba(redshift)
 
