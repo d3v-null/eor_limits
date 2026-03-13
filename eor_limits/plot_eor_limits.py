@@ -137,6 +137,7 @@ def make_plot(
     sensitivity_style: Optional[dict] = None,
     fig: Optional[plt.Figure] = None,
     ax: Optional[plt.Axes] = None,
+    dark_mode: bool = False,
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot the current EoR Limits as a function of k and redshift.
@@ -216,6 +217,8 @@ def make_plot(
         style parameters for plotting, e.g. {'color': 'k', 'ls': '--', 'lw': 3}.
         An additional key 'sensitivity_kind' can be used to specify which kind of
         sensitivity to plot, e.g. 'sample+thermal', 'sample' or 'thermal'.
+    dark_mode : bool
+        Use dark background with light text and adjusted colors.
     """
     if papers is None:
         # use all the papers. This gives weird ordering which we will fix later
@@ -344,7 +347,7 @@ def make_plot(
                     k_vals = [paper["k"]]
                     delta_squared = [paper["delta_squared"]]
                 else:
-                    redshifts = list(np.squeeze(paper["redshift"]))
+                    redshifts = list(np.atleast_1d(np.squeeze(paper["redshift"])))
                     k_vals = paper["k"]
                     delta_squared = paper["delta_squared"]
                 for ind, elem in enumerate(redshifts):
@@ -376,6 +379,18 @@ def make_plot(
         fig_height = fig_width * (fig_ratio or 1)
     else:
         fig_height = fig_width * (fig_ratio or 0.5)
+
+    if dark_mode:
+        plt.style.use('dark_background')
+        outline_color = 'white'
+        shade_color_gen1 = '#555555'
+        shade_color_gen2 = '#333333'
+        shade_color_default = '#444444'
+    else:
+        outline_color = 'black'
+        shade_color_gen1 = 'grey'
+        shade_color_gen2 = 'lightgrey'
+        shade_color_default = 'grey'
 
     if fig is None or ax is None:
         fig = plt.figure(figsize=(fig_width, fig_height))
@@ -466,7 +481,7 @@ def make_plot(
                     c=np.asarray(paper["redshift"])[points_use].tolist(),
                     cmap=colormap,
                     norm=norm,
-                    edgecolors="black",
+                    edgecolors=outline_color,
                     label=label,
                     s=markersize,
                     zorder=10,
@@ -474,15 +489,15 @@ def make_plot(
                 if shade_limits is not False:
                     if shade_limits == "generational":
                         if paper["generation1"]:
-                            color_use = "grey"
+                            color_use = shade_color_gen1
                             zorder = 1
                             alpha = 1
                         else:
-                            color_use = "lightgrey"
+                            color_use = shade_color_gen2
                             zorder = 0
                             alpha = 1
                     else:
-                        color_use = "grey"
+                        color_use = shade_color_default
                         zorder = 0
                         alpha = 0.5
                     for index in points_use:
@@ -511,7 +526,7 @@ def make_plot(
                 k_upper = [paper["k_upper"]]
                 delta_squared = [paper["delta_squared"]]
             else:
-                redshifts = list(np.squeeze(paper["redshift"]))
+                redshifts = list(np.atleast_1d(np.squeeze(paper["redshift"])))
                 k_vals = paper["k"]
                 k_lower = paper["k_lower"]
                 k_upper = paper["k_upper"]
@@ -576,18 +591,18 @@ def make_plot(
                         c=np.zeros(len(k_vals[ind])) + redshift,
                         cmap=colormap,
                         norm=norm,
-                        edgecolors="black",
+                        edgecolors=outline_color,
                         label=label,
                         s=markersize,
                         zorder=10,
                     )
                 else:
                     color_val = scalar_map.to_rgba(redshift)
-                    # make black outline by plotting thicker black line first
+                    # make outline by plotting thicker line first
                     plt.plot(
                         k_edges,
                         delta_edges,
-                        c="black",
+                        c=outline_color,
                         linewidth=paper["linewidth"] + 2,
                         zorder=2,
                     )
@@ -603,15 +618,15 @@ def make_plot(
                 if shade_limits is not False:
                     if shade_limits == "generational":
                         if paper["generation1"]:
-                            color_use = "grey"
+                            color_use = shade_color_gen1
                             zorder = 1
                             alpha = 1
                         else:
-                            color_use = "lightgrey"
+                            color_use = shade_color_gen2
                             zorder = 0
                             alpha = 1
                     else:
-                        color_use = "grey"
+                        color_use = shade_color_default
                         zorder = 0
                         alpha = 0.5
                     plt.fill_between(
@@ -622,7 +637,7 @@ def make_plot(
                         alpha=alpha,
                         zorder=zorder,
                     )
-                if ind == min(lines_use):
+                if ind == 0:
                     lines.append(line)
                     legend_names.append(label)
 
@@ -939,7 +954,7 @@ if __name__ == "__main__":
             "An additional key 'sensitivity_kind' can be used to specify which kind of "
             "sensitivity to plot, e.g. 'sample+thermal', 'sample' or 'thermal'. "
             "If no name is given, the style will be applied to all sensitivities. "
-            "If no style is given, the default style will be used.",
+            "If no style is given, the default style will be used."
         ),
     )
     parser.add_argument("--fontsize", type=int, help="Font size to use.", default=15)
@@ -958,6 +973,11 @@ if __name__ == "__main__":
         dest="filename",
         help="Filename to save plot to.",
         default="eor_limits.pdf",
+    )
+    parser.add_argument(
+        "--dark",
+        action="store_true",
+        help="Use dark mode (dark background with light text).",
     )
 
     args = parser.parse_args()
@@ -1081,6 +1101,7 @@ if __name__ == "__main__":
         sensitivity_style=sensitivity_style,
         markersize=args.markersize,
         fig_ratio=args.height_ratio,
+        dark_mode=args.dark,
     )
 
     fig.savefig(args.filename)

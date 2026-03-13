@@ -1,0 +1,18 @@
+telescope: LOFAR
+author: Ceccotti
+year: 2025
+doi: 10.48550/arXiv.2504.18534
+type: line
+# delta_squared: [72.86**2., 106.65**2., 153.00**2., 246.92**2., 370.18**2.,
+#                 520.33**2., 683.2**2.]
+# 𝒫97.5(Δ²₂₁,d/bk)
+delta_squared: [146.61**2, 208.05**2, 271.89**2, 343.33**2, 428.38**2,
+                538.21**2, 706.98**2]
+
+k: [ 0.078, 0.104, 0.134, 0.183, 0.242, 0.320, 0.430 ]
+# These k bounds are taken by assuming log binning. Not authoritative
+k_lower: [0.065, 0.087, 0.115, 0.154, 0.206, 0.276, 0.371]
+k_upper: [0.087, 0.115, 0.154, 0.206, 0.276, 0.371, 0.503]
+redshift: [9.16]
+marker: H # hexagon2
+linewidth: 3
